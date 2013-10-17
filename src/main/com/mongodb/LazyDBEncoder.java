@@ -49,4 +49,9 @@ public class LazyDBEncoder implements DBEncoder {
 
         return lazyDBObject.getBSONSize();
     }
+
+    @Override
+    public boolean validateObject() {
+        return true;
+    }
 }

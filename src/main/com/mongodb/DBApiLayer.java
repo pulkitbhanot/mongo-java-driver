@@ -214,18 +214,18 @@ public class DBApiLayer extends DB {
                     trace( "save:  " + _fullNameSpace + " " + JSON.serialize( o ) );
                 }
             }
-
-            if ( shouldApply ){
-                for (DBObject o : list) {
-                    apply(o);
-                    _checkObject(o, false, false);
-                    Object id = o.get("_id");
-                    if (id instanceof ObjectId) {
-                        ((ObjectId) id).notNew();
+            if (encoder.validateObject()) {
+                if (shouldApply) {
+                    for (DBObject o : list) {
+                        apply(o);
+                        _checkObject(o, false, false);
+                        Object id = o.get("_id");
+                        if (id instanceof ObjectId) {
+                            ((ObjectId) id).notNew();
+                        }
                     }
                 }
             }
-
             WriteResult last = null;
 
             int cur = 0;
@@ -311,17 +311,18 @@ public class DBApiLayer extends DB {
             if (encoder == null)
                 encoder = DefaultDBEncoder.FACTORY.create();
 
-            if (!o.keySet().isEmpty()) {
-                // if 1st key doesn't start with $, then object will be inserted as is, need to check it
-                String key = o.keySet().iterator().next();
-                if (!key.startsWith("$"))
-                    _checkObject(o, false, false);
-            }
+            if (encoder.validateObject()) {
+                if (!o.keySet().isEmpty()) {
+                    // if 1st key doesn't start with $, then object will be inserted as is, need to check it
+                    String key = o.keySet().iterator().next();
+                    if (!key.startsWith("$"))
+                        _checkObject(o, false, false);
+                }
 
-            if ( willTrace() ) {
-                trace( "update: " + _fullNameSpace + " " + JSON.serialize( query ) + " " + JSON.serialize( o )  );
+                if (willTrace()) {
+                    trace("update: " + _fullNameSpace + " " + JSON.serialize(query) + " " + JSON.serialize(o));
+                }
             }
-
             OutMessage om = OutMessage.update(this, encoder, upsert, multi, query, o);
 
             return _connector.say( _db , om , concern );

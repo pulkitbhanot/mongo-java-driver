@@ -18,4 +18,13 @@ import org.bson.io.*;
 
 public interface DBEncoder {
     public int writeObject( OutputBuffer buf, BSONObject o );
+
+    /**
+     * Encoder should say whether the object should be validated or not.
+     * By Validation we mean to inspect the object for <b> _id</b> and
+     * also check if the keys contain <b>.</b> and <b>$</b>.
+     * if _id is not present and validateObject() is true an {@link org.bson.types.ObjectId} will be auto generated.
+     * @return
+     */
+    public boolean validateObject();
 }

@@ -29,6 +29,11 @@ public class DefaultDBEncoder extends BasicBSONEncoder implements DBEncoder {
         return x;
     }
 
+    @Override
+    public boolean validateObject() {
+        return true;
+    }
+
     static class DefaultFactory implements DBEncoderFactory {
         @Override
         public DBEncoder create( ){

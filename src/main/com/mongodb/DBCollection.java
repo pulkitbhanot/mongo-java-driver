@@ -32,6 +32,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** This class provides a skeleton implementation of a database collection.
  * <p>A typical invocation sequence is thus
@@ -793,30 +794,37 @@ public abstract class DBCollection {
      * @return
      * @throws MongoException
      */
-    public WriteResult save( DBObject jo, WriteConcern concern ){
-        if ( checkReadOnly( true ) )
-            return null;
-
-        _checkObject( jo , false , false );
-
-        Object id = jo.get( "_id" );
-
-        if ( id == null || ( id instanceof ObjectId && ((ObjectId)id).isNew() ) ){
-            if ( id != null && id instanceof ObjectId )
-                ((ObjectId)id).notNew();
-            if ( concern == null )
-            	return insert( jo );
+    public WriteResult save(DBObject jo, WriteConcern concern) {
+        if (!getDBEncoder().validateObject()) {
+            if (concern == null)
+                return insert(jo);
             else
-            	return insert( jo, concern );
+                return insert(jo, concern);
+
+        } else {
+            if (checkReadOnly(true))
+                return null;
+
+            _checkObject(jo, false, false);
+
+            Object id = jo.get("_id");
+
+            if (id == null || (id instanceof ObjectId && ((ObjectId) id).isNew())) {
+                if (id != null && id instanceof ObjectId)
+                    ((ObjectId) id).notNew();
+                if (concern == null)
+                    return insert(jo);
+                else
+                    return insert(jo, concern);
+            }
+
+            DBObject q = new BasicDBObject();
+            q.put("_id", id);
+            if (concern == null)
+                return update(q, jo, true, false);
+            else
+                return update(q, jo, true, false, concern);
         }
-
-        DBObject q = new BasicDBObject();
-        q.put( "_id" , id );
-        if ( concern == null )
-        	return update( q , jo , true , false );
-        else
-        	return update( q , jo , true , false , concern );
-
     }
 
     // ---- DB COMMANDS ----
@@ -1664,7 +1672,7 @@ public abstract class DBCollection {
      * Set a customer decoder factory for this collection.  Set to null to use the default from MongoOptions.
      * @param fact  the factory to set.
      */
-    public synchronized void setDBDecoderFactory(DBDecoderFactory fact) {
+    public void setDBDecoderFactory(DBDecoderFactory fact) {
         _decoderFactory = fact;
     }
 
@@ -1673,7 +1681,7 @@ public abstract class DBCollection {
      * is being used.
      * @return  the factory
      */
-    public synchronized DBDecoderFactory getDBDecoderFactory() {
+    public DBDecoderFactory getDBDecoderFactory() {
         return _decoderFactory;
     }
 
@@ -1681,7 +1689,7 @@ public abstract class DBCollection {
      * Set a customer encoder factory for this collection.  Set to null to use the default from MongoOptions.
      * @param fact  the factory to set.
      */
-    public synchronized void setDBEncoderFactory(DBEncoderFactory fact) {
+    public void setDBEncoderFactory(DBEncoderFactory fact) {
         _encoderFactory = fact;
     }
 
@@ -1690,8 +1698,8 @@ public abstract class DBCollection {
      * is being used.
      * @return  the factory
      */
-    public synchronized DBEncoderFactory getDBEncoderFactory() {
-        return _encoderFactory;
+    public DBEncoderFactory getDBEncoderFactory() {
+        return _encoderFactory == null ? DefaultDBEncoder.FACTORY : _encoderFactory;
     }
 
     final DB _db;
@@ -1707,7 +1715,7 @@ public abstract class DBCollection {
     final Bytes.OptionHolder _options;
 
     protected Class _objectClass = null;
-    private Map<String,Class> _internalClass = Collections.synchronizedMap( new HashMap<String,Class>() );
+    private ConcurrentHashMap<String,Class> _internalClass = new ConcurrentHashMap<String,Class>();
     private ReflectionDBObject.JavaWrapper _wrapper = null;
 
     final private Set<String> _createdIndexes = new HashSet<String>();
